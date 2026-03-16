@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api, { type Order } from '../services/api';
-import { CheckCircle, ArrowRight, Printer, Share2, GraduationCap } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
+import { CheckCircle, ArrowRight, Printer, Share2, GraduationCap, Copy } from 'lucide-react';
 import Layout from '../components/Layout';
 
 export default function OrderConfirmation() {
   const { id } = useParams<{ id: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const { addToast } = useToast();
 
   useEffect(() => {
     if (!id) return;
@@ -18,9 +20,41 @@ export default function OrderConfirmation() {
       })
       .catch((err: unknown) => {
         console.error('Failed to load order:', err);
+        addToast('Failed to load order details', 'error');
         setLoading(false);
       });
-  }, [id]);
+  }, [id, addToast]);
+
+  const handlePrint = () => {
+    window.print();
+    addToast('Opening print dialog...', 'info');
+  };
+
+  const handleShare = async () => {
+    const shareText = `I just reserved my graduation items on GradCart! Order #${order?.id}`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'GradCart Order Confirmation',
+          text: shareText,
+          url: window.location.href,
+        });
+      } catch (error) {
+        console.log('Share cancelled');
+      }
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      addToast('Order link copied to clipboard!', 'success');
+    }
+  };
+
+  const handleCopyOrderId = () => {
+    if (order) {
+      navigator.clipboard.writeText(`#${order.id}`);
+      addToast('Order ID copied to clipboard!', 'success');
+    }
+  };
 
   if (loading) {
     return (
@@ -50,13 +84,13 @@ export default function OrderConfirmation() {
   return (
     <Layout>
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-24">
-        <div className="bg-white rounded-[40px] shadow-2xl overflow-hidden border border-gray-100">
+        <div className="bg-white rounded-[40px] shadow-2xl overflow-hidden border border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="bg-maroon py-16 px-8 text-center relative overflow-hidden">
              <div className="absolute inset-0 opacity-10 flex items-center justify-center">
                <GraduationCap className="h-64 w-64 text-white" />
              </div>
              <div className="relative z-10">
-               <div className="bg-gold/20 h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-6 backdrop-blur-sm">
+               <div className="bg-gold/20 h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-6 backdrop-blur-sm animate-in zoom-in duration-500">
                  <CheckCircle className="h-10 w-10 text-gold" />
                </div>
                <h1 className="text-4xl font-black text-white mb-2 tracking-tight uppercase">Order Confirmed!</h1>
@@ -66,9 +100,17 @@ export default function OrderConfirmation() {
 
           <div className="p-8 md:p-12">
             <div className="flex flex-wrap justify-between items-center gap-6 pb-8 border-b border-gray-100 mb-8">
-              <div>
+              <div className="flex-1 min-w-[200px]">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Order Identifier</p>
-                <p className="text-xl font-black text-maroon tracking-tight">#{order.id}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xl font-black text-maroon tracking-tight">#{order.id}</p>
+                  <button
+                    onClick={handleCopyOrderId}
+                    className="p-2 text-gray-400 hover:text-maroon hover:bg-gray-50 rounded-lg transition-all"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
               <div className="text-right">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Status</p>
@@ -109,18 +151,24 @@ export default function OrderConfirmation() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Link
-                to="/"
-                className="flex items-center justify-center gap-3 py-5 bg-accent text-white rounded-2xl font-black uppercase tracking-widest hover:bg-maroon transition-all duration-300 group"
+                to="/dashboard"
+                className="flex items-center justify-center gap-3 py-5 bg-accent text-white rounded-2xl font-black uppercase tracking-widest hover:bg-maroon transition-all duration-300 group active:scale-95"
               >
                 Continue Shopping
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Link>
               <div className="flex gap-2">
-                <button className="flex-1 flex items-center justify-center gap-2 py-5 bg-gray-50 text-gray-500 rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-gray-100 transition-all">
+                <button
+                  onClick={handlePrint}
+                  className="flex-1 flex items-center justify-center gap-2 py-5 bg-gray-50 text-gray-500 rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-gray-100 hover:text-maroon transition-all active:scale-95"
+                >
                   <Printer className="h-4 w-4" />
                   Print
                 </button>
-                <button className="flex-1 flex items-center justify-center gap-2 py-5 bg-gray-50 text-gray-500 rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-gray-100 transition-all">
+                <button
+                  onClick={handleShare}
+                  className="flex-1 flex items-center justify-center gap-2 py-5 bg-gray-50 text-gray-500 rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-gray-100 hover:text-maroon transition-all active:scale-95"
+                >
                   <Share2 className="h-4 w-4" />
                   Share
                 </button>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { productApi, type Product } from '../services/api';
 import { useCart } from '../context/CartContext';
+import { useToast } from '../context/ToastContext';
 import { ShoppingCart, ArrowLeft, Star, Heart, Share2 } from 'lucide-react';
 import Layout from '../components/Layout';
 
@@ -11,7 +12,9 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState(1);
+  const [isWishlisted, setIsWishlisted] = useState(false);
   const { addToCart, loading: cartLoading } = useCart();
+  const { addToast } = useToast();
 
   useEffect(() => {
     if (!id) return;
@@ -29,9 +32,10 @@ export default function ProductDetail() {
       })
       .catch(err => {
         console.error('Failed to load product:', err);
+        addToast('Failed to load product details', 'error');
         setLoading(false);
       });
-  }, [id]);
+  }, [id, addToast]);
 
   const handleAttributeChange = (attrName: string, value: string) => {
     setSelectedAttributes(prev => ({ ...prev, [attrName]: value }));
@@ -39,7 +43,34 @@ export default function ProductDetail() {
 
   const handleAddToCart = async () => {
     if (!product) return;
-    await addToCart(product.id, selectedAttributes, quantity);
+    try {
+      await addToCart(product.id, selectedAttributes, quantity);
+      addToast(`${product.name} added to cart!`, 'success');
+    } catch (error) {
+      addToast('Failed to add item to cart', 'error');
+    }
+  };
+
+  const handleWishlist = () => {
+    setIsWishlisted(!isWishlisted);
+    addToast(isWishlisted ? 'Removed from wishlist' : 'Added to wishlist', 'info');
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: product?.name,
+          text: `Check out ${product?.name} on GradCart!`,
+          url: window.location.href,
+        });
+      } catch (error) {
+        console.log('Share cancelled');
+      }
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      addToast('Link copied to clipboard!', 'success');
+    }
   };
 
   if (loading) {
@@ -98,10 +129,20 @@ export default function ProductDetail() {
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
               />
               <div className="absolute top-8 right-8 flex flex-col gap-4">
-                <button className="p-4 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl hover:bg-maroon hover:text-white transition-all active:scale-95 text-gray-600">
-                  <Heart className="h-5 w-5" />
+                <button
+                  onClick={handleWishlist}
+                  className={`p-4 backdrop-blur-md rounded-2xl shadow-xl transition-all active:scale-95 ${
+                    isWishlisted
+                      ? 'bg-maroon text-white'
+                      : 'bg-white/90 text-gray-600 hover:bg-maroon hover:text-white'
+                  }`}
+                >
+                  <Heart className="h-5 w-5" fill={isWishlisted ? 'currentColor' : 'none'} />
                 </button>
-                <button className="p-4 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl hover:bg-maroon hover:text-white transition-all active:scale-95 text-gray-600">
+                <button
+                  onClick={handleShare}
+                  className="p-4 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl hover:bg-maroon hover:text-white transition-all active:scale-95 text-gray-600"
+                >
                   <Share2 className="h-5 w-5" />
                 </button>
               </div>
@@ -186,14 +227,14 @@ export default function ProductDetail() {
                 <div className="flex items-center bg-gray-50 rounded-2xl p-1 border border-gray-100">
                   <button
                     onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                    className="h-12 w-12 flex items-center justify-center text-gray-400 hover:text-maroon transition-colors"
+                    className="h-12 w-12 flex items-center justify-center text-gray-400 hover:text-maroon transition-colors font-bold text-lg"
                   >
-                    -
+                    −
                   </button>
                   <span className="w-12 text-center font-black text-accent">{quantity}</span>
                   <button
                     onClick={() => setQuantity(q => q + 1)}
-                    className="h-12 w-12 flex items-center justify-center text-gray-400 hover:text-maroon transition-colors"
+                    className="h-12 w-12 flex items-center justify-center text-gray-400 hover:text-maroon transition-colors font-bold text-lg"
                   >
                     +
                   </button>
@@ -203,10 +244,19 @@ export default function ProductDetail() {
               <button
                 onClick={handleAddToCart}
                 disabled={cartLoading}
-                className="w-full py-6 bg-accent text-white rounded-[24px] text-base font-black uppercase tracking-widest hover:bg-maroon hover:shadow-2xl hover:shadow-maroon/30 transition-all duration-500 disabled:opacity-50 flex items-center justify-center gap-3 active:scale-95"
+                className="w-full py-6 bg-accent text-white rounded-[24px] text-base font-black uppercase tracking-widest hover:bg-maroon hover:shadow-2xl hover:shadow-maroon/30 transition-all duration-500 disabled:opacity-50 flex items-center justify-center gap-3 active:scale-95 relative overflow-hidden"
               >
-                <ShoppingCart className="h-5 w-5" />
-                Reserve Item • ₱{(parseFloat(String(product.base_price)) * quantity).toLocaleString()}
+                {cartLoading ? (
+                  <>
+                    <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Adding to Cart...
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="h-5 w-5" />
+                    Reserve Item • ₱{(parseFloat(String(product.base_price)) * quantity).toLocaleString()}
+                  </>
+                )}
               </button>
               
               <p className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">

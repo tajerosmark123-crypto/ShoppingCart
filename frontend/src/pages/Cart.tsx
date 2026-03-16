@@ -1,15 +1,37 @@
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { ShoppingCart, ArrowLeft, Trash2, CreditCard, Star, GraduationCap } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
+import { ShoppingCart, ArrowLeft, Trash2, CreditCard, Star, GraduationCap, Plus, Minus } from 'lucide-react';
 import Layout from '../components/Layout';
+import { useState } from 'react';
 
 export default function Cart() {
   const { cart, removeFromCart, checkout, loading } = useCart();
+  const { addToast } = useToast();
+  const [itemQuantities, setItemQuantities] = useState<Record<number, number>>({});
+
+  const handleRemoveItem = async (itemId: number, itemName: string) => {
+    try {
+      await removeFromCart(itemId);
+      addToast(`${itemName} removed from cart`, 'info');
+    } catch (error) {
+      addToast('Failed to remove item', 'error');
+    }
+  };
 
   const handleCheckout = async () => {
-    const result = await checkout();
-    if (result) {
-      window.location.href = `/order-confirmation/${result.orderId}`;
+    try {
+      const result = await checkout();
+      if (result) {
+        addToast('Order confirmed! Redirecting...', 'success');
+        setTimeout(() => {
+          window.location.href = `/order-confirmation/${result.orderId}`;
+        }, 1000);
+      } else {
+        addToast('Checkout failed. Please try again.', 'error');
+      }
+    } catch (error) {
+      addToast('An error occurred during checkout', 'error');
     }
   };
 
@@ -17,7 +39,7 @@ export default function Cart() {
     return (
       <Layout>
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-          <div className="text-center py-20 bg-white rounded-[40px] shadow-sm border border-gray-100">
+          <div className="text-center py-20 bg-white rounded-[40px] shadow-sm border border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="bg-gray-50 h-24 w-24 rounded-full flex items-center justify-center mx-auto mb-8">
               <ShoppingCart className="h-10 w-10 text-gray-300" />
             </div>
@@ -52,7 +74,7 @@ export default function Cart() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
           <div className="lg:col-span-2 space-y-6">
             {cart.items.map(item => (
-              <div key={item.id} className="group bg-white rounded-3xl p-6 md:p-8 flex flex-col md:flex-row gap-8 shadow-sm border border-gray-50 hover:shadow-xl hover:shadow-maroon/5 transition-all duration-500">
+              <div key={item.id} className="group bg-white rounded-3xl p-6 md:p-8 flex flex-col md:flex-row gap-8 shadow-sm border border-gray-50 hover:shadow-xl hover:shadow-maroon/5 transition-all duration-500 animate-in fade-in slide-in-from-bottom-2">
                 <div className="w-full md:w-32 h-40 md:h-32 bg-gray-50 rounded-2xl overflow-hidden flex-shrink-0">
                   <img
                     src={item.product.image_url}
@@ -64,8 +86,8 @@ export default function Cart() {
                   <div className="flex justify-between items-start mb-4">
                     <h3 className="text-xl font-bold text-maroon tracking-tight">{item.product.name}</h3>
                     <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="p-2 text-gray-300 hover:text-red-500 transition-colors"
+                      onClick={() => handleRemoveItem(item.id, item.product.name)}
+                      className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all duration-300"
                     >
                       <Trash2 className="h-5 w-5" />
                     </button>
@@ -78,14 +100,21 @@ export default function Cart() {
                         <p className="text-sm font-bold text-accent">{value}</p>
                       </div>
                     ))}
-                    <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Quantity</p>
-                      <p className="text-sm font-bold text-accent">{item.quantity}</p>
-                    </div>
                   </div>
 
                   <div className="mt-auto flex justify-between items-center pt-4 border-t border-gray-50">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Unit Price</span>
+                    <div className="flex items-center gap-4">
+                      <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Qty:</span>
+                      <div className="flex items-center bg-gray-50 rounded-lg p-1 border border-gray-100">
+                        <button className="h-8 w-8 flex items-center justify-center text-gray-400 hover:text-maroon transition-colors">
+                          <Minus className="h-3 w-3" />
+                        </button>
+                        <span className="w-6 text-center font-bold text-accent text-sm">{item.quantity}</span>
+                        <button className="h-8 w-8 flex items-center justify-center text-gray-400 hover:text-maroon transition-colors">
+                          <Plus className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
                     <span className="text-xl font-black text-accent">
                       ₱{parseFloat(String(item.price)).toLocaleString()}
                     </span>
@@ -95,55 +124,64 @@ export default function Cart() {
             ))}
           </div>
 
-            <div className="space-y-8">
-              <div className="bg-accent rounded-3xl p-8 text-white shadow-2xl sticky top-32 z-50">
-                <h2 className="text-xl font-black mb-8 uppercase tracking-widest text-gold">Order Summary</h2>
-                
-                <div className="space-y-4 mb-8">
-                  <div className="flex justify-between text-sm font-bold">
-                    <span className="text-gray-400 uppercase tracking-widest">Items Subtotal</span>
-                    <span>₱{parseFloat(String(cart.subtotal)).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-sm font-bold">
-                    <span className="text-gray-400 uppercase tracking-widest">Reservation Fee</span>
-                    <span>₱{parseFloat(String(cart.tax)).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-sm font-bold">
-                    <span className="text-gray-400 uppercase tracking-widest">Pickup Fee</span>
-                    <span className="text-gold font-black underline underline-offset-4 decoration-2">FREE</span>
-                  </div>
-                  <div className="pt-6 mt-6 border-t border-white/10 flex justify-between items-end">
-                    <span className="text-xs font-black uppercase tracking-[0.2em] text-gold">Total to Pay</span>
-                    <span className="text-3xl font-black tracking-tighter">₱{(parseFloat(String(cart.subtotal)) + parseFloat(String(cart.tax))).toLocaleString()}</span>
-                  </div>
+          <div className="space-y-8">
+            <div className="bg-accent rounded-3xl p-8 text-white shadow-2xl sticky top-32 z-50 animate-in fade-in slide-in-from-right-4 duration-500">
+              <h2 className="text-xl font-black mb-8 uppercase tracking-widest text-gold">Order Summary</h2>
+              
+              <div className="space-y-4 mb-8">
+                <div className="flex justify-between text-sm font-bold">
+                  <span className="text-gray-400 uppercase tracking-widest">Items Subtotal</span>
+                  <span>₱{parseFloat(String(cart.subtotal)).toLocaleString()}</span>
                 </div>
-
-                <button
-                  onClick={handleCheckout}
-                  disabled={loading}
-                  className="w-full py-5 bg-gold text-maroon rounded-2xl font-black uppercase tracking-widest hover:scale-105 transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl"
-                >
-                  <CreditCard className="h-5 w-5" />
-                  Confirm Reservation
-                </button>
-                
-                <div className="mt-8 flex items-center justify-center gap-2 opacity-30">
-                   <GraduationCap className="h-4 w-4" />
-                   <span className="text-[10px] font-black uppercase tracking-widest">Official GradCart Secure</span>
+                <div className="flex justify-between text-sm font-bold">
+                  <span className="text-gray-400 uppercase tracking-widest">Reservation Fee</span>
+                  <span>₱{parseFloat(String(cart.tax)).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm font-bold">
+                  <span className="text-gray-400 uppercase tracking-widest">Pickup Fee</span>
+                  <span className="text-gold font-black underline underline-offset-4 decoration-2">FREE</span>
+                </div>
+                <div className="pt-6 mt-6 border-t border-white/10 flex justify-between items-end">
+                  <span className="text-xs font-black uppercase tracking-[0.2em] text-gold">Total to Pay</span>
+                  <span className="text-3xl font-black tracking-tighter">₱{(parseFloat(String(cart.subtotal)) + parseFloat(String(cart.tax))).toLocaleString()}</span>
                 </div>
               </div>
 
-              <div className="bg-maroon/5 rounded-3xl p-8 border border-maroon/10 relative z-10">
-                 <div className="flex items-center gap-4 mb-4">
-                 <div className="bg-gold p-2 rounded-lg">
-                   <Star className="h-4 w-4 text-maroon" fill="currentColor" />
-                 </div>
-                 <h4 className="font-black text-maroon text-sm uppercase tracking-widest">Quality Guarantee</h4>
-               </div>
-               <p className="text-xs text-gray-500 leading-relaxed font-medium">
-                 All our academic regalia meet strict institutional standards and are inspected for quality before shipment.
-               </p>
+              <button
+                onClick={handleCheckout}
+                disabled={loading}
+                className="w-full py-5 bg-gold text-maroon rounded-2xl font-black uppercase tracking-widest hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl active:scale-95 relative overflow-hidden"
+              >
+                {loading ? (
+                  <>
+                    <div className="h-5 w-5 border-2 border-maroon/30 border-t-maroon rounded-full animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="h-5 w-5" />
+                    Confirm Reservation
+                  </>
+                )}
+              </button>
+              
+              <div className="mt-8 flex items-center justify-center gap-2 opacity-30">
+                 <GraduationCap className="h-4 w-4" />
+                 <span className="text-[10px] font-black uppercase tracking-widest">Official GradCart Secure</span>
+              </div>
             </div>
+
+            <div className="bg-maroon/5 rounded-3xl p-8 border border-maroon/10 relative z-10 animate-in fade-in slide-in-from-right-4 duration-500 delay-100">
+               <div className="flex items-center gap-4 mb-4">
+               <div className="bg-gold p-2 rounded-lg">
+                 <Star className="h-4 w-4 text-maroon" fill="currentColor" />
+               </div>
+               <h4 className="font-black text-maroon text-sm uppercase tracking-widest">Quality Guarantee</h4>
+             </div>
+             <p className="text-xs text-gray-500 leading-relaxed font-medium">
+               All our academic regalia meet strict institutional standards and are inspected for quality before shipment.
+             </p>
+          </div>
           </div>
         </div>
       </main>

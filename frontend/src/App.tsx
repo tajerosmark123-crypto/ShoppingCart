@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
+import { ToastProvider, useToast } from './context/ToastContext';
+import ToastContainer from './components/ToastContainer';
 import Home from './pages/Home';
 import ProductDetail from './pages/ProductDetail';
 import Cart from './pages/Cart';
@@ -14,11 +16,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return isAuth ? <>{children}</> : <Navigate to="/login" replace />;
 };
 
-function App() {
+function AppContent() {
+  const { toasts, removeToast } = useToast();
   return (
-    <BrowserRouter>
-      <CartProvider>
-        <Routes>
+    <>
+      <ToastContainer toasts={toasts} onClose={removeToast} />
+      <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
@@ -46,8 +49,19 @@ function App() {
               <OrderConfirmation />
             </ProtectedRoute>
           } />
-        </Routes>
-      </CartProvider>
+      </Routes>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <ToastProvider>
+        <CartProvider>
+          <AppContent />
+        </CartProvider>
+      </ToastProvider>
     </BrowserRouter>
   );
 }

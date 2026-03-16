@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingCart, GraduationCap } from 'lucide-react';
+import { ShoppingCart, GraduationCap, Menu, X, LogOut } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useToast } from '../context/ToastContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -9,11 +10,21 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const { cart } = useCart();
+  const { addToast } = useToast();
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const cartItemCount = cart?.items?.length || 0;
   const isLandingPage = location.pathname === '/';
   const isAuthPage = location.pathname === '/login' || location.pathname === '/signup';
   const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+
+  const handleLogout = () => {
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('cartId');
+    addToast('You have been logged out', 'info');
+    setIsMobileMenuOpen(false);
+    window.location.href = '/';
+  };
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] flex flex-col font-sans">
@@ -36,39 +47,81 @@ export default function Layout({ children }: LayoutProps) {
               </div>
             </Link>
 
-            {/* Static Navigation Items */}
+            {/* Desktop Navigation Items */}
             <nav className="hidden md:flex items-center gap-8">
-              <Link to="/dashboard" className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-maroon transition-colors">Inventory</Link>
-              <Link to="/cart" className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-maroon transition-colors">Reservation</Link>
-              <button className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-maroon transition-colors">Batch Registry</button>
+              {isAuthenticated && (
+                <>
+                  <Link to="/dashboard" className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-maroon transition-colors">Inventory</Link>
+                  <Link to="/cart" className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-maroon transition-colors">Reservation</Link>
+                </>
+              )}
             </nav>
 
             <div className="flex items-center gap-4">
-              <Link
-                to="/cart"
-                className="relative p-2 text-gray-600 hover:text-maroon transition-colors group"
-              >
-                <ShoppingCart className="h-6 w-6" />
-                {cartItemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-maroon text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center border-2 border-white animate-in zoom-in duration-300">
-                    {cartItemCount}
-                  </span>
-                )}
-              </Link>
+              {isAuthenticated && (
+                <Link
+                  to="/cart"
+                  className="relative p-2 text-gray-600 hover:text-maroon transition-colors group"
+                >
+                  <ShoppingCart className="h-6 w-6" />
+                  {cartItemCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-maroon text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center border-2 border-white animate-in zoom-in duration-300">
+                      {cartItemCount}
+                    </span>
+                  )}
+                </Link>
+              )}
               
               {isAuthenticated && (
                 <button
-                  onClick={() => {
-                    localStorage.removeItem('isAuthenticated');
-                    window.location.href = '/';
-                  }}
+                  onClick={handleLogout}
                   className="hidden sm:flex items-center gap-2 px-6 py-2.5 rounded-full bg-accent text-white font-black text-[10px] uppercase tracking-widest hover:bg-maroon hover:shadow-lg transition-all duration-300 active:scale-95"
                 >
+                  <LogOut className="h-4 w-4" />
                   Logout
                 </button>
               )}
+
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="md:hidden p-2 text-gray-600 hover:text-maroon transition-colors"
+              >
+                {isMobileMenuOpen ? (
+                  <X className="h-6 w-6" />
+                ) : (
+                  <Menu className="h-6 w-6" />
+                )}
+              </button>
             </div>
           </div>
+
+          {/* Mobile Menu */}
+          {isMobileMenuOpen && isAuthenticated && (
+            <div className="md:hidden pb-6 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+              <Link
+                to="/dashboard"
+                className="block px-4 py-3 text-sm font-bold text-maroon bg-gray-50 rounded-lg hover:bg-maroon hover:text-white transition-all"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Inventory
+              </Link>
+              <Link
+                to="/cart"
+                className="block px-4 py-3 text-sm font-bold text-maroon bg-gray-50 rounded-lg hover:bg-maroon hover:text-white transition-all"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Reservation ({cartItemCount})
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-2 px-4 py-3 text-sm font-bold text-white bg-accent rounded-lg hover:bg-maroon transition-all"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -96,16 +149,15 @@ export default function Layout({ children }: LayoutProps) {
               <ul className="space-y-4 text-gray-400 text-[10px] font-bold uppercase tracking-widest">
                 <li><Link to="/dashboard" className="hover:text-gold transition-colors">Inventory Dashboard</Link></li>
                 <li><Link to="/cart" className="hover:text-gold transition-colors">My Reservation</Link></li>
-                <li><button className="hover:text-gold transition-colors">Batch Registry</button></li>
               </ul>
             </div>
 
             <div>
-              <h4 className="font-bold mb-6 text-gold uppercase tracking-widest text-sm">Support</h4>
-              <ul className="space-y-4 text-gray-400 text-sm">
-                <li><button className="hover:text-white transition-colors">Contact Us</button></li>
-                <li><button className="hover:text-white transition-colors">Shipping Policy</button></li>
-                <li><button className="hover:text-white transition-colors">Returns & Exchanges</button></li>
+              <h4 className="font-bold mb-6 text-gold uppercase tracking-widest text-[10px]">Support</h4>
+              <ul className="space-y-4 text-gray-400 text-[10px] font-bold uppercase tracking-widest">
+                <li><button className="hover:text-gold transition-colors">Contact Us</button></li>
+                <li><button className="hover:text-gold transition-colors">Shipping Policy</button></li>
+                <li><button className="hover:text-gold transition-colors">Returns & Exchanges</button></li>
               </ul>
             </div>
           </div>

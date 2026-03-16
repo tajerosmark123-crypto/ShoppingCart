@@ -1,18 +1,46 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GraduationCap, ArrowRight, Mail, Lock, ArrowLeft } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 import Layout from '../components/Layout';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { addToast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock login logic
-    localStorage.setItem('isAuthenticated', 'true');
-    navigate('/dashboard');
+    
+    if (!email || !password) {
+      addToast('Please fill in all fields', 'warning');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      addToast('Please enter a valid email address', 'error');
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      localStorage.setItem('isAuthenticated', 'true');
+      addToast('Welcome back! Redirecting to dashboard...', 'success');
+      
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 500);
+    } catch (error) {
+      addToast('Login failed. Please try again.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -26,7 +54,7 @@ export default function Login() {
             <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
             Back to Home
           </Link>
-          <div className="bg-white rounded-[40px] shadow-2xl overflow-hidden border border-gray-100">
+          <div className="bg-white rounded-[40px] shadow-2xl overflow-hidden border border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="bg-maroon py-12 px-8 text-center relative overflow-hidden">
               <div className="absolute inset-0 opacity-10 flex items-center justify-center">
                 <GraduationCap className="h-48 w-48 text-white" />
@@ -42,13 +70,14 @@ export default function Login() {
                 <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Email Address</label>
                   <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
                     <input
                       type="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-maroon/20 focus:border-maroon outline-none transition-all font-medium"
+                      disabled={isLoading}
+                      className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-maroon/20 focus:border-maroon outline-none transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="name@school.edu"
                     />
                   </div>
@@ -57,16 +86,23 @@ export default function Login() {
                 <div>
                   <div className="flex justify-between mb-2 px-1">
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Password</label>
-                    <button type="button" className="text-[10px] font-black text-maroon uppercase tracking-widest hover:underline">Forgot?</button>
+                    <button 
+                      type="button" 
+                      className="text-[10px] font-black text-maroon uppercase tracking-widest hover:underline transition-colors"
+                      onClick={() => addToast('Password reset feature coming soon', 'info')}
+                    >
+                      Forgot?
+                    </button>
                   </div>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
                     <input
                       type="password"
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-maroon/20 focus:border-maroon outline-none transition-all font-medium"
+                      disabled={isLoading}
+                      className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-maroon/20 focus:border-maroon outline-none transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="••••••••"
                     />
                   </div>
@@ -74,10 +110,20 @@ export default function Login() {
 
                 <button
                   type="submit"
-                  className="w-full py-5 bg-accent text-white rounded-2xl font-black uppercase tracking-widest hover:bg-maroon hover:shadow-2xl hover:shadow-maroon/30 transition-all duration-500 flex items-center justify-center gap-3 group"
+                  disabled={isLoading}
+                  className="w-full py-5 bg-accent text-white rounded-2xl font-black uppercase tracking-widest hover:bg-maroon hover:shadow-2xl hover:shadow-maroon/30 transition-all duration-500 flex items-center justify-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden"
                 >
-                  Sign In
-                  <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  {isLoading ? (
+                    <>
+                      <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Signing In...
+                    </>
+                  ) : (
+                    <>
+                      Sign In
+                      <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
                 </button>
               </form>
 
