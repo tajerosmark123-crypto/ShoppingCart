@@ -40,7 +40,7 @@ class CartViewSet(viewsets.ModelViewSet):
             tax=cart_data['tax'],
             shipping=cart_data['shipping'],
             total=cart_data['total'],
-            status='paid'
+            status='pending'
         )
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
